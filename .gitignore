@@ -1,0 +1,29 @@
+# Byte-compiled files
+__pycache__/
+*.py[cod]
+
+# macOS-specific files
+.DS_Store
+
+# Environment and package files
+.env
+.venv
+env/
+venv/
+ENV/
+*.egg-info/
+.eggs/
+
+# Cache and logs
+*.log
+*.sqlite3
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# PyCharm and VSCode specific settings (optional)
+.idea/
+.vscode/
+
+# OS-specific files (optional)
+Thumbs.db
