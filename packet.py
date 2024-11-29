@@ -1,0 +1,62 @@
+from scapy.all import TCP, IP, Raw, raw
+import socket
+
+def compute_checksum(packet):
+    packet[TCP].chksum = None
+    return packet.__class__(bytes(packet))
+
+
+
+
+def compute_checksum_data(data):
+    print(data)
+    """Compute the 16-bit checksum for the given data."""
+    if len(data) % 2 != 0:  # If odd length, pad with a zero byte
+        data += b'\x00'
+
+    checksum = 0
+    for i in range(0, len(data), 2):
+        # Combine two bytes into one 16-bit word
+        word = (data[i] << 8) + data[i + 1]
+        checksum += word
+        # Wrap around if overflow occurs
+        checksum = (checksum & 0xFFFF) + (checksum >> 16)
+
+    # One's complement of the final sum
+    return ~checksum & 0xFFFF
+
+def compute_ip_tcp_checksums(packet):
+    """
+    Compute IP and TCP checksums manually for a given Scapy packet.
+    Args:
+        packet: A Scapy packet with IP and TCP layers.
+    Returns:
+        tuple: (ip_checksum, tcp_checksum)
+    """
+    # Compute IP checksum
+    ip_raw = bytes(packet[IP])  # Get raw bytes of the IP header
+    ip_raw_zeroed = ip_raw[:10] + b'\x00\x00' + ip_raw[12:]  # Zero out the checksum
+    ip_checksum = compute_checksum_data(ip_raw_zeroed)
+
+    # Compute TCP checksum
+    if TCP in packet:
+        tcp_raw = bytes(packet[TCP])  # Get raw bytes of the TCP header + payload
+        tcp_length = len(tcp_raw)
+
+        # Construct pseudo-header
+        pseudo_header = (
+            socket.inet_aton(packet[IP].src) +  # Convert Source IP to binary
+            socket.inet_aton(packet[IP].dst) +  # Convert Destination IP to binary
+            b'\x00' +  # Zero padding
+            bytes([packet[IP].proto]) +  # Protocol (6 for TCP)
+            tcp_length.to_bytes(2, "big")  # TCP length (header + payload)
+        )
+
+        # Concatenate pseudo-header and TCP segment
+        tcp_raw_with_pseudo = pseudo_header + tcp_raw
+        tcp_raw_with_pseudo_zeroed = tcp_raw_with_pseudo[:16] + b'\x00\x00' + tcp_raw_with_pseudo[18:]  # Zero out checksum
+        tcp_checksum = compute_checksum_data(tcp_raw_with_pseudo_zeroed)
+    else:
+        tcp_checksum = None
+
+    return ip_checksum, tcp_checksum
