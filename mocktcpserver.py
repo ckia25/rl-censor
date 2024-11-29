@@ -48,7 +48,7 @@ class MockTCPServer:
             original_checksum = packet[TCP].chksum
 
             # Temporarily set the checksum field to zero for recalculation
-            packet[TCP].chksum = 0
+            packet[TCP].chksum = None
 
             # Recalculate the checksum
             recalculated_packet = IP(raw(packet[IP])) / TCP(raw(packet[TCP]))

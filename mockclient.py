@@ -60,6 +60,7 @@ class MockClient:
     def compute_checksum(self, packet):
         if IP in packet and TCP in packet:
             original_checksum = packet[TCP].chksum
-            packet[TCP].chksum = 0
+            packet[TCP].chksum = None
             recalculated_checksum = (IP(raw(packet[IP])) / TCP(raw(packet[TCP])))[TCP].chksum
             packet[TCP].chksum = recalculated_checksum
+

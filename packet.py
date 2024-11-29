@@ -60,3 +60,23 @@ def compute_ip_tcp_checksums(packet):
         tcp_checksum = None
 
     return ip_checksum, tcp_checksum
+
+
+def compute_ip_chksm(packet):
+    if IP in packet and TCP in packet:
+        packet[IP].chksum = None
+        recalculated_checksum = IP(raw(packet[IP]))[IP].chksum
+        packet[IP].chksum = recalculated_checksum
+    return recalculated_checksum
+
+    
+
+def compute_tcp_chksm(packet):
+    if IP in packet and TCP in packet:
+        packet[TCP].chksum = None
+        recalculated_checksum = (IP(raw(packet[IP])) / TCP(raw(packet[TCP])))[TCP].chksum
+        packet[TCP].chksum = recalculated_checksum
+    return recalculated_checksum
+
+
+
