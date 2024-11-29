@@ -69,7 +69,7 @@ def encode_state(base_packet, packets, response_packets):
     for response_packet in response_packets:
         vectors.append(encode_packet(response_packet))
     for i in range(NUM_PACKETS - len(response_packets)):
-        vectors.append(create_k_empty_response_packets(1)[0])
+        vectors.append(encode_packet(create_k_empty_response_packets(1)[0]))
     return torch.tensor(np.stack(vectors)).float().reshape((2*NUM_PACKETS+1)*PACKET_SIZE,)
 
 

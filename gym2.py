@@ -40,7 +40,7 @@ def episilon_greedy_experience(target_network, eps, evaluator, iterations, n=2):
         if r < eps:
             outputs = target_network.forward(state_vector)
         else:
-            outputs = torch.tensor(np.random.uniform(-1000000, 100000, size=len(state_vector))).float()
+            outputs = torch.tensor(np.random.uniform(-1000000, 100000, size=NUM_PACKETS*PACKET_SIZE)).float()
         modified_packets = decode_output(base_packet, packets, outputs)
         reward, response_packets = evaluator.evaluate(modified_packets)
         new_state_vector = encode_state(base_packet, modified_packets, response_packets)

@@ -38,12 +38,12 @@ def mod_dst_ip(val, packet):
 
 def mod_src_port(val, packet):
     if val >= 0:
-        packet[TCP].sport = int(val)
+        packet[TCP].sport = int(val)%65536
     return packet
 
 def mod_dst_port(val, packet):
     if val >= 0:
-        packet[TCP].dport = int(val)
+        packet[TCP].dport = int(val)%65536
     return packet
 
 def mod_sn(val, packet):
@@ -53,11 +53,11 @@ def mod_sn(val, packet):
 
 def mod_chksum_ip(val, packet):
     if val >= 0:
-        packet[IP].chksum = int(val)
+        packet[IP].chksum = int(val)%65536
     return packet
 
 def mod_chksum_tcp(val, packet):
-    packet[TCP].chksum = int(val)
+    packet[TCP].chksum = int(val)%65536
     return packet
 
 def mod_rst_flag(val, packet):
