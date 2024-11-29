@@ -1,5 +1,5 @@
 import torch
-from torch.nn import nn
+import torch.nn as nn
 
 class Network(nn.Module):
     def __init__(self, input_dim, output_dim, n_hidden_layers):
@@ -27,10 +27,5 @@ class Network(nn.Module):
             print(f"Error loading parameters: {e}")
     
 
-
-class Agent():
-
-
-class Evaluator():
 
 

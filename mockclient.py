@@ -1,5 +1,6 @@
 # mockclient.py
 from scapy.all import IP, TCP, Raw, raw
+from packet import compute_tcp_chksm, compute_ip_chksm
 
 class MockClient:
     def __init__(self, ip, dst_ip, src_port, dst_port):
@@ -18,7 +19,8 @@ class MockClient:
         tcp_layer = TCP(sport=self.src_port, dport=self.dst_port)
         payload = forbidden_word
         packet = ip_layer / tcp_layer / payload
-        self.compute_checksum(packet)
+        compute_ip_chksm(packet)
+        compute_tcp_chksm(packet)
         return packet
     
     def apply_strategy(self, packet, strategy):

@@ -89,8 +89,8 @@ def train_network(learning_network, target_network, replay_buffer, optimizer, ba
 
 if __name__ == "__main__":
     # Parameters
-    input_dim = 10
-    output_dim = 10  # Same as input_dim for vectorized actions
+    input_dim = (2*NUM_PACKETS+1)*PACKET_SIZE
+    output_dim = NUM_PACKETS*PACKET_SIZE  # Same as input_dim for vectorized actions
     n_hidden_layers = 2
     batch_size = 32
     gamma = 0.99
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     print('Agent in the Gym')
     for i in range(10):
         experience = episilon_greedy_experience(
-                                                agent_network=target_network,
+                                                target_network=target_network,
                                                 eps=0.9,
                                                 evaluator=evaluator,
                                                 iterations=10
@@ -147,7 +147,7 @@ if __name__ == "__main__":
         # Simulate an environment (replace with real environment logic)
         for t in range(50):
             experience = episilon_greedy_experience(
-                                                    agent_network=target_network,
+                                                    target_network=target_network,
                                                     eps=0.9,
                                                     evaluator=evaluator,
                                                     iterations=10

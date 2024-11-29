@@ -4,6 +4,7 @@ import struct
 import numpy as np
 import torch
 from field_modifier import modify_packet_pipeline
+from packet import compute_ip_chksm, compute_tcp_chksm
 
 
 fields = {
@@ -28,6 +29,9 @@ def ip_to_int(ip_address):
 def create_k_empty_response_packets(k):
     packets = []
     packet = IP(src="0.0.0.0", dst="0.0.0.0") / TCP(sport=0, dport=0, seq=0)
+    compute_tcp_chksm(packet)
+    compute_ip_chksm(packet)
+
     packets.append(packet)
     for i in range(k-1):
         packets.append(packet.copy())
@@ -64,12 +68,13 @@ def encode_state(base_packet, packets, response_packets):
         vectors.append(encode_packet(packet))
     for response_packet in response_packets:
         vectors.append(encode_packet(response_packet))
-
-    return np.stack(vectors)
+    for i in range(NUM_PACKETS - len(response_packets)):
+        vectors.append(create_k_empty_response_packets(1)[0])
+    return torch.tensor(np.stack(vectors)).float().reshape((2*NUM_PACKETS+1)*PACKET_SIZE,)
 
 
 def decode_output(base_packet, packets, outputs):  
-    vectors = np.array(outputs).reshape(NUM_PACKETS, PACKET_SIZE)
+    vectors = (outputs).reshape(NUM_PACKETS, PACKET_SIZE)
     modified_packets = []
     for vector, packet in zip(vectors, packets):
         modified_packet = decode_vector(vector, packet, base_packet)
