@@ -1,4 +1,4 @@
 Ideas:
 - Use a target/learning networks
 - Add a payload field: (-) forbidden_word, (+) other_word
-- 
+- The random episilon_greedy_experience approach may not help with the updating of the parameters

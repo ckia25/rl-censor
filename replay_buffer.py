@@ -22,5 +22,9 @@ class ReplayBuffer:
         batch = [item.clone() if isinstance(item, torch.Tensor) else item for item in sampled_batch]
         return batch
     
+    def reset(self):
+        self.buffer = []
+
+    
     def __len__(self):
         return len(self.buffer)

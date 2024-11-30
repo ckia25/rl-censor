@@ -91,7 +91,7 @@ if __name__ == "__main__":
     batch_size = 32
     gamma = 0.99
     lr = 0.001
-    replay_buffer_capacity = 10000
+    replay_buffer_capacity = 33
 
     # Initialize networks
     actor = ContinuousActor(state_dim, action_dim, hidden_layers=2, hidden_units=256)
@@ -112,23 +112,25 @@ if __name__ == "__main__":
     for episode in range(1000):
         base_packet, packets, response_packets = reset_environment()
         episode_reward = 0
-        eps += 0.003
-        for step in range(4):
+        eps += 0.0003
+        for step in range(3):
             # Simulate an environment (replace with real environment logic)
             experience, packet_info = episilon_greedy_experience(actor, packets, base_packet, response_packets, eps=eps, evaluator=evaluator)
             state, action, reward, next_state, done = experience    
             if reward > 100:
                 done=True
+                replay_buffer.push(state=state, action=action, reward=reward, next_state=next_state,done=done)
+                replay_buffer.push(state=state, action=action, reward=reward, next_state=next_state,done=done)
             replay_buffer.push(state=state, action=action, reward=reward, next_state=next_state,done=done)
             episode_reward += reward  
             # Train the learning network
-            print(len(replay_buffer))
-            if len(replay_buffer) > batch_size:
+            if len(replay_buffer) > batch_size and done == True:
                 train_network(actor, critic, replay_buffer, actor_optimizer, critic_optimizer, batch_size, gamma)
             if done == True:
                 break
-        # Move to the next state
-        state = next_state.clone()
+            # Move to the next state
+            state = next_state.clone()
+            packets, response_packets = packet_info
         
         if episode % 100 == 0 or episode_reward > 0:
             packets, response_packets = packet_info
@@ -143,5 +145,20 @@ if __name__ == "__main__":
             for packet in response_packets:
                 packet_summary(packet)
             print('*'*73)
-            
+
+    
+    for i in range(3):
+        experience, packet_info = episilon_greedy_experience(actor, packets, base_packet, response_packets, eps=10, evaluator=evaluator)
+        packets, response_packets = packet_info
+    print('*'*73)
+    print("Current Reward", episode_reward)
+    print('Base Packet')
+    packet_summary(base_packet)
+    print('Modified Packets')
+    for packet in packets:
+        packet_summary(packet)
+    print('Response Packets')
+    for packet in response_packets:
+        packet_summary(packet)
+    print('*'*73)     
 
