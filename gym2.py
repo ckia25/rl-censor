@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import random
-from rl_training import Network
+from rl_training import Network, Critic, ContinuousActor
 from evaluator import Evaluator
 from strategycoding import NUM_PACKETS, PACKET_SIZE
 from strategycoding import encode_state, decode_output, create_k_empty_response_packets
@@ -29,71 +29,63 @@ class ReplayBuffer:
     def __len__(self):
         return len(self.buffer)
 
-def episilon_greedy_experience(target_network, eps, evaluator, iterations, n=2):
-    experience = []
+def reset_environment():
     base_packet = evaluator.get_base_packet()
     packets = [base_packet]*NUM_PACKETS
     response_packets = create_k_empty_response_packets(NUM_PACKETS)
+    return base_packet, packets, response_packets
+
+
+
+def episilon_greedy_experience(actor_network, packets, base_packet, response_packets, eps, evaluator):
     state_vector = encode_state(base_packet, packets, response_packets)
-    for i in range(iterations):
-        r = random.random()
-        if r < eps:
-            outputs = target_network.forward(state_vector)
-        else:
-            outputs = torch.tensor(np.random.uniform(-1000000, 100000, size=NUM_PACKETS*PACKET_SIZE)).float()
-        modified_packets = decode_output(base_packet, packets, outputs)
-        reward, response_packets = evaluator.evaluate(modified_packets)
-        new_state_vector = encode_state(base_packet, modified_packets, response_packets)
-        done = False
-        if i == iterations - 1:
-            done = True
-        experience.append((state_vector, outputs, reward, new_state_vector, done))
-        state_vector = new_state_vector
-    return experience
+    r = random.random()
+    if r < eps:
+        outputs = actor_network.forward(state_vector)
+    else:
+        outputs = torch.tensor(np.random.uniform(-1000000, 100000, size=NUM_PACKETS*PACKET_SIZE)).float()
+    modified_packets = decode_output(base_packet, packets, outputs)
+    reward, response_packets = evaluator.evaluate(modified_packets)
+    new_state_vector = encode_state(base_packet, modified_packets, response_packets)
+    done = False
+    return (state_vector, outputs, reward, new_state_vector, done), (modified_packets, response_packets)
 
 
-def train_network(learning_network, target_network, replay_buffer, optimizer, batch_size, gamma):
-    if len(replay_buffer) < batch_size:
-        return  # Not enough samples yet
-
-    # Sample a batch of experiences
+def train_network(actor, critic, replay_buffer, actor_optimizer, critic_optimizer, batch_size, gamma):
+    
     batch = replay_buffer.sample(batch_size)
     states, actions, rewards, next_states, dones = zip(*batch)
-    
-    # Convert to tensors
+
     states = torch.stack(states).float().clone()
     actions = torch.stack(actions).float().clone()
     rewards = torch.tensor(rewards, dtype=torch.float32).unsqueeze(1).clone()
     next_states = torch.stack(next_states).float().clone()
     dones = torch.tensor(dones, dtype=torch.float32).unsqueeze(1).clone()
-
-    # Compute predicted Q-values
-    predicted_q_values = learning_network(states)
-
-    # Compute target Q-values
+    
+        # Compute target Q-values using critic
     with torch.no_grad():
-        target_q_values_next = target_network(next_states)  # Predict next state Q-values
-        max_next_q_values = target_q_values_next.max(dim=1, keepdim=True)[0]  # Max Q(s', a')
-        target_q_values = rewards + gamma * max_next_q_values * (1 - dones)
+        next_states_critic = next_states.clone()
+        next_actions = actor(next_states)
+        target_q_values = rewards + gamma * (1 - dones) * critic(next_states_critic, next_actions)
 
-    # Compute loss
-    criterion = nn.MSELoss()
-    loss = criterion(predicted_q_values, actions)  # Compare full vectors
+    # Update critic: Minimize MSE between predicted and target Q-values
+    predicted_q_values = critic(states, actions)
+    critic_loss = nn.MSELoss()(predicted_q_values, target_q_values)
+    critic_optimizer.zero_grad()
+    critic_loss.backward(retain_graph=True)
+    critic_optimizer.step()
 
-    # Backpropagation
-    optimizer.zero_grad()
-    loss.backward(retain_graph=True)  # Only one backward pass per iteration
-    optimizer.step()
-
-    return loss.item()
-
-
+    # Update actor: Maximize the Q-value predicted by the critic
+    actor_loss = -critic(states, actor(states).detach()).mean()
+    actor_optimizer.zero_grad()
+    actor_loss.backward(retain_graph=True)
+    actor_optimizer.step()
 
 
 if __name__ == "__main__":
     # Parameters
-    input_dim = (2*NUM_PACKETS+1)*PACKET_SIZE
-    output_dim = NUM_PACKETS*PACKET_SIZE  # Same as input_dim for vectorized actions
+    state_dim = (2*NUM_PACKETS+1)*PACKET_SIZE
+    action_dim = NUM_PACKETS*PACKET_SIZE  # Same as input_dim for vectorized actions
     n_hidden_layers = 2
     batch_size = 32
     gamma = 0.99
@@ -101,83 +93,49 @@ if __name__ == "__main__":
     replay_buffer_capacity = 10000
 
     # Initialize networks
-    learning_network = Network(input_dim, output_dim, n_hidden_layers)
-    target_network = Network(input_dim, output_dim, n_hidden_layers)
-    target_network.load_parameters(learning_network)  # Sync target network initially
+    actor = ContinuousActor(state_dim, action_dim, hidden_layers=2, hidden_units=256)
+    critic = Critic(state_dim, action_dim, hidden_layers=2, hidden_units=256)
 
     # Optimizer
-    optimizer = optim.Adam(learning_network.parameters(), lr=lr)
+    actor_optimizer = optim.Adam(actor.parameters(), lr=1e-4)
+    critic_optimizer = optim.Adam(critic.parameters(), lr=1e-3)
 
 
     # Replay buffer
     replay_buffer = ReplayBuffer(replay_buffer_capacity)
-    
+    torch.autograd.set_detect_anomaly(True)
     evaluator = Evaluator()
-    good_example = ''
-    print('Agent in the Gym')
-    for i in range(10):
-        experience = episilon_greedy_experience(
-                                                target_network=target_network,
-                                                eps=0.9,
-                                                evaluator=evaluator,
-                                                iterations=10
-                                                )
-        if i % 100 == 0:
-            print('Agent in round', i)
-            print('reward', experience[-1][2])
-            
-
-        for tup in experience:
-            state, action, reward, next_state, done = tup
-            if reward > 100:
-                print('*********************')
-                print(reward)
-                print(next_state)
-                print('*********************')
-            replay_buffer.push(
-                state=state,
-                action=action,
-                reward=reward,
-                next_state=next_state,
-                done=done
-            )
-    print('Agent finished with the gym, length of replay buffer:', len(replay_buffer))
-    print('Good Example:', good_example)
-    
-
 
     # Example loop for training
     for episode in range(100):
-        # Simulate an environment (replace with real environment logic)
-        for t in range(50):
-            experience = episilon_greedy_experience(
-                                                    target_network=target_network,
-                                                    eps=0.9,
-                                                    evaluator=evaluator,
-                                                    iterations=10
-                                                    )
-                
-            for tup in experience:
-                state, action, reward, next_state, done = tup 
-                if reward > 100:
-                    print('Good Reward', reward)
-                    print(next_state)
-                                   
-                replay_buffer.push(
-                    state=state,
-                    action=action,
-                    reward=reward,
-                    next_state=next_state,
-                    done=done
-                )
-
+        base_packet, packets, response_packets = reset_environment()
+        episode_reward = 0
+        for step in range(10):
+            # Simulate an environment (replace with real environment logic)
+            experience, packet_info = episilon_greedy_experience(actor, packets, base_packet, response_packets, eps=0.9, evaluator=evaluator)
+            state, action, reward, next_state, done = experience    
+            if step == 9:
+                done=True
+            replay_buffer.push(state=state, action=action, reward=reward, next_state=next_state,done=done)
+            episode_reward += reward  
             # Train the learning network
-            train_network(learning_network, target_network, replay_buffer, optimizer, batch_size, gamma)
+            if len(replay_buffer) > batch_size:
+                train_network(actor, critic, replay_buffer, actor_optimizer, critic_optimizer, batch_size, gamma)
 
-            # Move to the next state
-            state = next_state
-        print("Current Reward", experience[-1][2])
-        # Update the target network periodically
+        # Move to the next state
+        state = next_state.clone()
+        
         if episode % 10 == 0:
-            target_network.load_parameters(learning_network)
-            print('parameters loaded')
+            packets, response_packets = packet_info
+            print('*'*73)
+            print("Current Reward", episode_reward)
+            print('Base Packet')
+            print(base_packet)
+            print('Modified Packets')
+            for packet in packets:
+                print(packet)
+            print('Response Packets')
+            for packet in response_packets:
+                print(packet)
+            
+

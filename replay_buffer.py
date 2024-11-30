@@ -18,7 +18,9 @@ class ReplayBuffer:
     
     def sample(self, batch_size):
         """Sample a batch of experiences."""
-        return random.sample(self.buffer, batch_size)
+        sampled_batch = random.sample(self.buffer, batch_size)
+        batch = [item.clone() if isinstance(item, torch.Tensor) else item for item in sampled_batch]
+        return batch
     
     def __len__(self):
         return len(self.buffer)

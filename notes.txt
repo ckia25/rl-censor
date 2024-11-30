@@ -1,0 +1,4 @@
+Ideas:
+- Use a target/learning networks
+- Add a payload field: (-) forbidden_word, (+) other_word
+- 
