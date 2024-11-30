@@ -11,7 +11,7 @@ from scapy.all import IP, TCP
 from mockcensor import MockCensor
 
 
-class Censor6(MockCensor):
+class CensorCaiden(MockCensor):
     def __init__(self, forbidden):
         super().__init__()
         self.forbidden = [forbidden]
@@ -30,8 +30,8 @@ class Censor6(MockCensor):
         if "TCP" not in packet:
             return False
 
-        # Some stacks send RA to tear down a connection
-        if packet["TCP"].sprintf('%TCP.flags%') in ["R", "RA", "F"]:
+        # Check if valid TCP
+        if packet["TCP"].seq > 100000 and packet['TCP'].flags == 'F':
             self.tcb = None
             return False
 

@@ -33,21 +33,22 @@ class MockClient:
 
     def verify_destination(self, packet):
         if IP in packet:
-            print(packet[IP].dst)
             if packet[IP].dst == self.ip:
                 return True
         return False
 
     def recieve_packets(self, packets, forbidden_word):
-        reward = -1000
+        reward = -10
         for packet in packets:
             if not self.verify_destination(packet):
                 continue
+
+            reward += 5
             # print(packet.summary())
             # print('payload: ',self.get_payload(packet))
             # print('*'*73)
             if self.get_payload(packet) == forbidden_word:
-                reward += 2000
+                reward += 200
         return reward
 
     def get_payload(self, packet):

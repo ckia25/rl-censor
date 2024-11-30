@@ -28,6 +28,13 @@ class MockStrategy():
         packets.append(packet)
         packets.append(copy_packet)
         return packets
+    
+    def strategy3(self, packet):
+        packets = []
+        packets.append(packet)
+        packets.append(packet.copy())
+        return packets
+
 
 
     

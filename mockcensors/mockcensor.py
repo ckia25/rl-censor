@@ -60,6 +60,10 @@ class MockCensor(object):
     def get_server_queue(self):
         return self.server_queue
     
+
+    def reset(self):
+        pass
+
     def monitor_packets(self, packets):
         try:
             for packet in packets:
@@ -67,5 +71,6 @@ class MockCensor(object):
             return self.queue
         finally:
             self.clear_queue()
+            self.reset()
          
 

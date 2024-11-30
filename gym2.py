@@ -9,6 +9,7 @@ from rl_training import Network, Critic, ContinuousActor
 from evaluator import Evaluator
 from strategycoding import NUM_PACKETS, PACKET_SIZE
 from strategycoding import encode_state, decode_output, create_k_empty_response_packets
+from packet import packet_summary
 
 # Define Replay Buffer
 class ReplayBuffer:
@@ -44,7 +45,7 @@ def episilon_greedy_experience(actor_network, packets, base_packet, response_pac
         outputs = actor_network.forward(state_vector)
     else:
         outputs = torch.tensor(np.random.uniform(-1000000, 100000, size=NUM_PACKETS*PACKET_SIZE)).float()
-    modified_packets = decode_output(base_packet, packets, outputs)
+    modified_packets = decode_output(base_packet, packets, outputs*100000)
     reward, response_packets = evaluator.evaluate(modified_packets)
     new_state_vector = encode_state(base_packet, modified_packets, response_packets)
     done = False
@@ -104,38 +105,43 @@ if __name__ == "__main__":
     # Replay buffer
     replay_buffer = ReplayBuffer(replay_buffer_capacity)
     torch.autograd.set_detect_anomaly(True)
-    evaluator = Evaluator()
+    evaluator = Evaluator(censor_index=1)
 
     # Example loop for training
-    for episode in range(100):
+    eps = 0.1
+    for episode in range(1000):
         base_packet, packets, response_packets = reset_environment()
         episode_reward = 0
-        for step in range(10):
+        eps += 0.003
+        for step in range(4):
             # Simulate an environment (replace with real environment logic)
-            experience, packet_info = episilon_greedy_experience(actor, packets, base_packet, response_packets, eps=0.9, evaluator=evaluator)
+            experience, packet_info = episilon_greedy_experience(actor, packets, base_packet, response_packets, eps=eps, evaluator=evaluator)
             state, action, reward, next_state, done = experience    
-            if step == 9:
+            if reward > 100:
                 done=True
             replay_buffer.push(state=state, action=action, reward=reward, next_state=next_state,done=done)
             episode_reward += reward  
             # Train the learning network
+            print(len(replay_buffer))
             if len(replay_buffer) > batch_size:
                 train_network(actor, critic, replay_buffer, actor_optimizer, critic_optimizer, batch_size, gamma)
-
+            if done == True:
+                break
         # Move to the next state
         state = next_state.clone()
         
-        if episode % 10 == 0:
+        if episode % 100 == 0 or episode_reward > 0:
             packets, response_packets = packet_info
             print('*'*73)
             print("Current Reward", episode_reward)
             print('Base Packet')
-            print(base_packet)
+            packet_summary(base_packet)
             print('Modified Packets')
             for packet in packets:
-                print(packet)
+                packet_summary(packet)
             print('Response Packets')
             for packet in response_packets:
-                print(packet)
+                packet_summary(packet)
+            print('*'*73)
             
 

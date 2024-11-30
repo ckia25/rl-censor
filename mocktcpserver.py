@@ -24,11 +24,11 @@ class MockTCPServer:
             if packet[IP].dst == self.server_ip and packet[TCP].dport == self.server_port:
                 # Verify the TCP checksum
                 if not self.verify_tcp_checksum(packet):
-                    print("Checksum verification failed. Packet is corrupted.")
+                    # print("Checksum verification failed. Packet is corrupted.")
                     return self.send_reset(packet)  # Send a reset if checksum fails
 
                 # Process the packet normally if checksum is valid
-                print("Checksum is valid. Processing packet.")
+                # print("Checksum is valid. Processing packet.")
                 
                 # Handle the packet according to its flags
                 if packet[TCP].flags == "S":  # SYN - connection request
@@ -104,5 +104,5 @@ class MockTCPServer:
         rst_packet = IP(src=self.server_ip, dst=packet[IP].src) / \
                      TCP(sport=self.server_port, dport=packet[TCP].sport, 
                          seq=0, ack=packet[TCP].seq + 1, flags="R")
-        print("Sent RST due to unexpected packet or sequence.")
+        # print("Sent RST due to unexpected packet or sequence.")
         return rst_packet

@@ -23,7 +23,7 @@ def ip_to_int(ip_address):
 
 def int_to_ip(val):
     """Converts an integer back to an IP address."""
-    return socket.inet_ntoa(struct.pack("!I", int(val)))
+    return socket.inet_ntoa(struct.pack("!I", int(val)%4294967295))
 
 # Modifier functions
 def mod_src_ip(val, packet):
@@ -48,12 +48,11 @@ def mod_dst_port(val, packet):
 
 def mod_sn(val, packet):
     if val >= 0:
-        packet[TCP].seq = int(val)
+        packet[TCP].seq = int(val)%4294967295
     return packet
 
 def mod_chksum_ip(val, packet):
-    if val >= 0:
-        packet[IP].chksum = int(val)%65536
+    packet[IP].chksum = int(val)%65536
     return packet
 
 def mod_chksum_tcp(val, packet):
@@ -61,11 +60,13 @@ def mod_chksum_tcp(val, packet):
     return packet
 
 def mod_rst_flag(val, packet):
-    packet[TCP].flags = packet[TCP].flags | 0x04 if val else packet[TCP].flags & ~0x04
+    if val > 0:
+        packet[TCP].flags = 'R'
     return packet
 
 def mod_fin_flag(val, packet):
-    packet[TCP].flags = packet[TCP].flags | 0x01 if val else packet[TCP].flags & ~0x01
+    if val > 0:
+        packet[TCP].flags = 'F'
     return packet
 
 field_functions = {
@@ -87,9 +88,9 @@ def modify_packet_pipeline(vector, packet):
     recompute_tcp_chksm = False
     for i, val in enumerate(vector):
         field = fields[i]
-        if field == 'chksum_ip' and val < 0:
+        if field == 'chksum_ip' and (val <= 0 or val is None):
             recompute_ip_chksm = True
-        elif field == 'chksum_tcp' and val < 0:
+        elif field == 'chksum_tcp' and (val <= 0 or val is None):
             recompute_tcp_chksm = True
         else:
             packet = field_functions[field](val, packet)

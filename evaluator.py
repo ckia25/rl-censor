@@ -2,6 +2,7 @@ import sys
 import os
 sys.path.append(os.path.abspath('./mockcensors'))
 from mockcensor6 import Censor6
+from mockcensor_caiden import CensorCaiden
 from mocktcpserver import MockTCPServer
 from mockclient import MockClient
 from mockstrategy import MockStrategy
@@ -10,7 +11,9 @@ import torch
 
 class Evaluator():
 
-    def __init__(self, forbidden_word='turtle', 
+    def __init__(self,
+                censor_index=0, 
+                forbidden_word='turtle', 
                 server_ip='127.0.0.1', 
                 server_port=65432, 
                 client_ip='10.10.10.10', 
@@ -22,8 +25,11 @@ class Evaluator():
         self.server_port = server_port
         self.client_port = client_port
 
-
-        self.censor = Censor6(forbidden_word)
+        if censor_index == 1:
+            self.censor = CensorCaiden(forbidden_word)
+        else:
+            self.censor = Censor6(forbidden_word)
+            
         self.server = MockTCPServer(
             server_ip=server_ip,
             server_port=server_port

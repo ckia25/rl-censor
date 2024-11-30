@@ -1,4 +1,4 @@
-from scapy.all import TCP, IP, Raw, raw
+from scapy.all import TCP, IP, Raw, raw, Packet
 import socket
 
 def compute_checksum(packet):
@@ -78,3 +78,37 @@ def compute_tcp_chksm(packet):
 
 
 
+def packet_summary(packet: Packet) -> str:
+    """
+    Extract specific fields from a Scapy packet and return them in a single line.
+    
+    Args:
+        packet (Packet): Scapy packet.
+        
+    Returns:
+        str: A string with extracted fields (IP addresses, ports, flags, checksum, sequence number).
+    """
+    fields = []
+
+    # Extract IP addresses (src and dst)
+    if packet.haslayer("IP"):
+        fields.append(f"IP.src={packet[IP].src}")
+        fields.append(f"IP.dst={packet[IP].dst}")
+    else:
+        fields.append("IP.src=N/A")
+        fields.append("IP.dst=N/A")
+    
+    # Extract ports (source and destination)
+    if packet.haslayer("TCP"):
+        fields.append(f"TCP.sport={packet[TCP].sport}")
+        fields.append(f"TCP.dport={packet[TCP].dport}")
+        # TCP flags
+        fields.append(f"TCP.flags={packet[TCP].flags}")
+        # TCP checksum
+        fields.append(f"TCP.chksum={packet[TCP].chksum}")
+        # TCP sequence number
+        fields.append(f"TCP.seq={packet[TCP].seq}")
+    else:
+        fields.extend(["TCP.sport=N/A", "TCP.dport=N/A", "TCP.flags=N/A", "TCP.chksum=N/A", "TCP.seq=N/A"])
+    
+    print(" | ".join(fields))

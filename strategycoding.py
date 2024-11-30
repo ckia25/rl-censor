@@ -46,7 +46,7 @@ def encode_packet(packet):
         vector[0] = ip_to_int(ip_layer.src)
         vector[1] = ip_to_int(ip_layer.dst)
         # Add IP checksum directly as an integer
-        vector[5] = ip_layer.chksum
+        vector[5] = 0 if ip_layer.chksum is None else ip_layer.chksum
 
     if TCP in packet:
         tcp_layer = packet[TCP]
@@ -54,7 +54,7 @@ def encode_packet(packet):
         vector[3] = tcp_layer.dport  # Destination port
         vector[4] = tcp_layer.seq  # Sequence number
         # Add TCP checksum directly as an integer
-        vector[6] = tcp_layer.chksum
+        vector[6] = 0 if tcp_layer.chksum is None else tcp_layer.chksum
         vector[7] = 1 if tcp_layer.flags.R else 0  # RST flag (1 if set)
         vector[8] = 1 if tcp_layer.flags.F else 0  # FIN flag (1 if set)
 
@@ -66,7 +66,7 @@ def encode_state(base_packet, packets, response_packets):
     vectors.append(encode_packet(base_packet))
     for packet in packets:
         vectors.append(encode_packet(packet))
-    for response_packet in response_packets:
+    for response_packet in response_packets[:NUM_PACKETS]:
         vectors.append(encode_packet(response_packet))
     for i in range(NUM_PACKETS - len(response_packets)):
         vectors.append(encode_packet(create_k_empty_response_packets(1)[0]))
