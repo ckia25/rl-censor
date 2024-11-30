@@ -6,8 +6,6 @@ def compute_checksum(packet):
     return packet.__class__(bytes(packet))
 
 
-
-
 def compute_checksum_data(data):
     print(data)
     """Compute the 16-bit checksum for the given data."""

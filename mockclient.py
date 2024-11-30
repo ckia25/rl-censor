@@ -43,9 +43,9 @@ class MockClient:
         for packet in packets:
             if not self.verify_destination(packet):
                 continue
-            print(packet.summary())
-            print('payload: ',self.get_payload(packet))
-            print('*'*73)
+            # print(packet.summary())
+            # print('payload: ',self.get_payload(packet))
+            # print('*'*73)
             if self.get_payload(packet) == forbidden_word:
                 reward += 2000
         return reward

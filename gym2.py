@@ -51,6 +51,7 @@ def episilon_greedy_experience(target_network, eps, evaluator, iterations, n=2):
         state_vector = new_state_vector
     return experience
 
+
 def train_network(learning_network, target_network, replay_buffer, optimizer, batch_size, gamma):
     if len(replay_buffer) < batch_size:
         return  # Not enough samples yet
@@ -59,32 +60,34 @@ def train_network(learning_network, target_network, replay_buffer, optimizer, ba
     batch = replay_buffer.sample(batch_size)
     states, actions, rewards, next_states, dones = zip(*batch)
     
-
     # Convert to tensors
-    states = torch.stack(states).float()
-    actions = torch.stack(actions).float()
-    rewards = torch.tensor(rewards, dtype=torch.float32).unsqueeze(1)
-    next_states = torch.stack(next_states).float()
-    dones = torch.tensor(dones, dtype=torch.float32).unsqueeze(1)
+    states = torch.stack(states).float().clone()
+    actions = torch.stack(actions).float().clone()
+    rewards = torch.tensor(rewards, dtype=torch.float32).unsqueeze(1).clone()
+    next_states = torch.stack(next_states).float().clone()
+    dones = torch.tensor(dones, dtype=torch.float32).unsqueeze(1).clone()
 
-    # Compute Q values for current states and actions
-    predicted_actions = learning_network(states)
+    # Compute predicted Q-values
+    predicted_q_values = learning_network(states)
 
-    # Compute target Q values
+    # Compute target Q-values
     with torch.no_grad():
-        target_actions = target_network(next_states)
-        max_next_q_values = target_actions.max(dim=1, keepdim=True)[0]  # Max Q for next state
+        target_q_values_next = target_network(next_states)  # Predict next state Q-values
+        max_next_q_values = target_q_values_next.max(dim=1, keepdim=True)[0]  # Max Q(s', a')
         target_q_values = rewards + gamma * max_next_q_values * (1 - dones)
 
-    # Compute loss (e.g., between predicted and actual actions)
-    loss = nn.MSELoss()(predicted_actions, actions)
+    # Compute loss
+    criterion = nn.MSELoss()
+    loss = criterion(predicted_q_values, actions)  # Compare full vectors
 
     # Backpropagation
     optimizer.zero_grad()
-    loss.backward(retain_graph=True)
+    loss.backward(retain_graph=True)  # Only one backward pass per iteration
     optimizer.step()
 
-    # NEED TO INCLUDE THE REWARD!!!!!!!!
+    return loss.item()
+
+
 
 
 if __name__ == "__main__":
@@ -140,6 +143,7 @@ if __name__ == "__main__":
             )
     print('Agent finished with the gym, length of replay buffer:', len(replay_buffer))
     print('Good Example:', good_example)
+    
 
 
     # Example loop for training

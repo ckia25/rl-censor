@@ -1,7 +1,7 @@
 from scapy.all import Raw, IP, TCP
 import socket
 import struct
-from packet import compute_ip_tcp_checksums
+from packet import compute_ip_chksm, compute_tcp_chksm
 
 
 fields = {
@@ -93,19 +93,8 @@ def modify_packet_pipeline(vector, packet):
             recompute_tcp_chksm = True
         else:
             packet = field_functions[field](val, packet)
-    
-    if recompute_tcp_chksm and recompute_ip_chksm:
-        packet[TCP].chksum = None
-        packet[IP].chksum = None
-        ip_chksm, tcp_chksm = compute_ip_tcp_checksums(packet)
-        packet[TCP].chksum = tcp_chksm
-        packet[IP].chksum = ip_chksm
-    elif recompute_ip_chksm:
-        packet[IP].chksum = None
-        ip_chksm, tcp_chksm = compute_ip_tcp_checksums(packet)
-        packet[IP].chksum = ip_chksm
-    elif recompute_tcp_chksm:
-        packet[TCP].chksum = None
-        ip_chksm, tcp_chksm = compute_ip_tcp_checksums(packet)
-        packet[TCP].chksum = ip_chksm
+    if recompute_ip_chksm:
+        compute_ip_chksm(packet)
+    if recompute_tcp_chksm:
+        compute_tcp_chksm(packet)
     return packet
