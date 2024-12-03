@@ -42,8 +42,10 @@ class MockClient:
         for packet in packets:
             if not self.verify_destination(packet):
                 continue
-
-            reward += 5
+            if packet[TCP].flags.R == True:
+                reward += 5
+            else:
+                reward += 10
             # print(packet.summary())
             # print('payload: ',self.get_payload(packet))
             # print('*'*73)

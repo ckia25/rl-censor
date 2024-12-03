@@ -1,0 +1,10 @@
+episode: 0
+*************************************************************************
+Current Reward -95
+Base Packet
+IP.src=10.10.10.10 | IP.dst=127.0.0.1 | TCP.sport=12345 | TCP.dport=65432 | TCP.flags=S | TCP.chksum=31142 | TCP.seq=0
+Modified Packets
+IP.src=0.0.1.246 | IP.dst=127.0.0.1 | TCP.sport=904 | TCP.dport=924 | TCP.flags=F | TCP.chksum=45735 | TCP.seq=460
+IP.src=0.0.3.196 | IP.dst=127.0.0.1 | TCP.sport=851 | TCP.dport=790 | TCP.flags=R | TCP.chksum=556 | TCP.seq=583
+Response Packets
+*************************************************************************
