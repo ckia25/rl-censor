@@ -23,10 +23,9 @@ class MockStrategy():
         copy_packet = packet.copy()
         copy_packet[TCP].chksum=1
         copy_packet[TCP].flags = 'F'
-        copy_packet[IP].src = '10.1.0.1'
-        compute_tcp_chksm(copy_packet)
-        packets.append(packet)
+        # compute_tcp_chksm(copy_packet)
         packets.append(copy_packet)
+        packets.append(packet)
         return packets
     
     def strategy3(self, packet):

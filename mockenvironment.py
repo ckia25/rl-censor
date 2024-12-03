@@ -24,4 +24,5 @@ client = MockClient(
 strategy = MockStrategy()
 network = MockNetwork(client, server, censor)
 reward = network.test_strategy(strategy, forbidden_word)
+
 print('Reward:', reward)

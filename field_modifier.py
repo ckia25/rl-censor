@@ -60,13 +60,13 @@ def mod_chksum_tcp(val, packet):
     return packet
 
 def mod_rst_flag(val, packet):
-    if val > 0:
-        packet[TCP].flags = 'R'
+    packet[TCP].flags.S = False
+    packet[TCP].flags.R = True if val > 0 else False
     return packet
 
 def mod_fin_flag(val, packet):
-    if val > 0:
-        packet[TCP].flags = 'F'
+    packet[TCP].flags.S = False
+    packet[TCP].flags.F = True if val > 0 else False
     return packet
 
 field_functions = {

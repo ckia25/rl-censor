@@ -31,7 +31,7 @@ class CensorCaiden(MockCensor):
             return False
 
         # Check if valid TCP
-        if packet["TCP"].seq > 100000 and packet['TCP'].flags == 'F':
+        if packet["TCP"].seq > 100 and packet['TCP'].flags == 'F':
             self.tcb = None
             return False
 

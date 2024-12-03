@@ -44,7 +44,7 @@ class ContinuousActor(nn.Module):
         
         # Output layer
         layers.append(nn.Linear(hidden_units, action_dim))
-        layers.append(nn.Tanh())  # Maps actions to [-1, 1]
+        # layers.append(nn.Tanh())  # Maps actions to [-1, 1]
         
         self.fc = nn.Sequential(*layers)
 

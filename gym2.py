@@ -37,50 +37,59 @@ def reset_environment():
     return base_packet, packets, response_packets
 
 
-
 def episilon_greedy_experience(actor_network, packets, base_packet, response_packets, eps, evaluator):
     state_vector = encode_state(base_packet, packets, response_packets)
     r = random.random()
     if r < eps:
-        outputs = actor_network.forward(state_vector)
+        outputs = actor_network(state_vector)
     else:
-        outputs = torch.tensor(np.random.uniform(-1000000, 100000, size=NUM_PACKETS*PACKET_SIZE)).float()
-    modified_packets = decode_output(base_packet, packets, outputs*100000)
+        outputs = torch.tensor(np.random.uniform(-2, 1, size=NUM_PACKETS*PACKET_SIZE)).float()
+    modified_packets = decode_output(base_packet, packets, outputs)
     reward, response_packets = evaluator.evaluate(modified_packets)
     new_state_vector = encode_state(base_packet, modified_packets, response_packets)
     done = False
     return (state_vector, outputs, reward, new_state_vector, done), (modified_packets, response_packets)
 
 
-def train_network(actor, critic, replay_buffer, actor_optimizer, critic_optimizer, batch_size, gamma):
+def train_network(actor, critic, replay_buffer, actor_optimizer, critic_optimizer, batch_size, gamma, l2_lambda=1):
     
     batch = replay_buffer.sample(batch_size)
     states, actions, rewards, next_states, dones = zip(*batch)
 
-    states = torch.stack(states).float().clone()
-    actions = torch.stack(actions).float().clone()
-    rewards = torch.tensor(rewards, dtype=torch.float32).unsqueeze(1).clone()
-    next_states = torch.stack(next_states).float().clone()
-    dones = torch.tensor(dones, dtype=torch.float32).unsqueeze(1).clone()
+    batch = replay_buffer.sample(batch_size)
+    states, actions, rewards, next_states, dones = zip(*batch)
+
+    states = torch.stack(states).float()
+    actions = torch.stack(actions).float()
+    rewards = torch.tensor(rewards, dtype=torch.float32).unsqueeze(1)
+    next_states = torch.stack(next_states).float()
+    dones = torch.tensor(dones, dtype=torch.float32).unsqueeze(1)
     
         # Compute target Q-values using critic
     with torch.no_grad():
-        next_states_critic = next_states.clone()
-        next_actions = actor(next_states)
+        next_states_critic = next_states
+        next_actions = actor(next_states_critic)
         target_q_values = rewards + gamma * (1 - dones) * critic(next_states_critic, next_actions)
 
     # Update critic: Minimize MSE between predicted and target Q-values
-    predicted_q_values = critic(states, actions)
+    predicted_q_values = critic(states, actions.clone().detach())
     critic_loss = nn.MSELoss()(predicted_q_values, target_q_values)
+    # critic_loss += l2_lambda * torch.sum(torch.square(torch.tensor(list(critic.parameters()))))
     critic_optimizer.zero_grad()
-    critic_loss.backward(retain_graph=True)
+    critic_loss.backward()
     critic_optimizer.step()
-
+    
     # Update actor: Maximize the Q-value predicted by the critic
-    actor_loss = -critic(states, actor(states).detach()).mean()
+    actor_loss = -critic(states, actor(states)).mean()
     actor_optimizer.zero_grad()
-    actor_loss.backward(retain_graph=True)
+    actor_loss.backward()
+
     actor_optimizer.step()
+
+
+    print(torch.sum([val for val in actor.parameters()][1]))
+
+
 
 
 if __name__ == "__main__":
@@ -104,35 +113,39 @@ if __name__ == "__main__":
 
     # Replay buffer
     replay_buffer = ReplayBuffer(replay_buffer_capacity)
-    torch.autograd.set_detect_anomaly(True)
-    evaluator = Evaluator(censor_index=1)
+    # torch.autograd.set_detect_anomaly(True)
+    evaluator = Evaluator(censor_index=0)
 
     # Example loop for training
-    eps = 0.1
-    for episode in range(1000):
+    eps = 10
+    for episode in range(10000):
         base_packet, packets, response_packets = reset_environment()
         episode_reward = 0
-        eps += 0.0003
-        for step in range(3):
+        for step in range(4):
             # Simulate an environment (replace with real environment logic)
             experience, packet_info = episilon_greedy_experience(actor, packets, base_packet, response_packets, eps=eps, evaluator=evaluator)
             state, action, reward, next_state, done = experience    
-            if reward > 100:
+            if reward > 0 or step == 3:
                 done=True
-                replay_buffer.push(state=state, action=action, reward=reward, next_state=next_state,done=done)
-                replay_buffer.push(state=state, action=action, reward=reward, next_state=next_state,done=done)
-            replay_buffer.push(state=state, action=action, reward=reward, next_state=next_state,done=done)
             episode_reward += reward  
+            if reward > 0:
+                replay_buffer.push(state=state.clone(), action=action.clone(), reward=episode_reward, next_state=next_state.clone(),done=done)
+                replay_buffer.push(state=state.clone(), action=action.clone(), reward=episode_reward, next_state=next_state.clone(),done=done)
+                replay_buffer.push(state=state.clone(), action=action.clone(), reward=episode_reward, next_state=next_state.clone(),done=done)
+            
+            replay_buffer.push(state=state.clone(), action=action.clone(), reward=reward, next_state=next_state.clone(),done=done)
+            
             # Train the learning network
-            if len(replay_buffer) > batch_size and done == True:
+
+            if len(replay_buffer) > batch_size:
                 train_network(actor, critic, replay_buffer, actor_optimizer, critic_optimizer, batch_size, gamma)
             if done == True:
                 break
             # Move to the next state
-            state = next_state.clone()
             packets, response_packets = packet_info
         
         if episode % 100 == 0 or episode_reward > 0:
+            print('episode:',episode)
             packets, response_packets = packet_info
             print('*'*73)
             print("Current Reward", episode_reward)
@@ -144,7 +157,8 @@ if __name__ == "__main__":
             print('Response Packets')
             for packet in response_packets:
                 packet_summary(packet)
-            print('*'*73)
+            print('*'*73, flush=True)
+            
 
     
     for i in range(3):
