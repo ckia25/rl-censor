@@ -17,10 +17,11 @@ fields = {
     6: 'chksum_tcp',    # TCP checksum
     7: 'rst_flag',      # RST flag (1 if set, 0 otherwise)
     8: 'fin_flag',      # FIN flag (1 if set, 0 otherwise)
-    9: 'send',          # NOT IMPLEMENTED will send if (+) won't send if (-)
+    9: 'syn_flag',
+    10: 'send',          # NOT IMPLEMENTED will send if (+) won't send if (-)
 }
 
-PACKET_SIZE = 9
+PACKET_SIZE = 10
 NUM_PACKETS = 2
 
 def ip_to_int(ip_address):
@@ -55,8 +56,9 @@ def encode_packet(packet):
         vector[4] = tcp_layer.seq  # Sequence number
         # Add TCP checksum directly as an integer
         vector[6] = 0 if tcp_layer.chksum is None else tcp_layer.chksum
-        vector[7] = 1 if tcp_layer.flags.R else 0  # RST flag (1 if set)
-        vector[8] = 1 if tcp_layer.flags.F else 0  # FIN flag (1 if set)
+        vector[7] = 1000 if tcp_layer.flags.R else -1000  # RST flag 
+        vector[8] = 1000 if tcp_layer.flags.F else -1000  # FIN flag
+        vector[9] = 1000 if tcp_layer.flags.S else -1000  # SYN flag
 
     return np.array(vector)
 

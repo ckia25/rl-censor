@@ -12,6 +12,7 @@ from strategycoding import encode_state, decode_output, create_k_empty_response_
 from packet import packet_summary
 import pandas as pd
 import matplotlib.pyplot as plt
+from scapy.all import IP, TCP, raw, Raw
 
 # Define Replay Buffer
 class ReplayBuffer:
@@ -45,6 +46,25 @@ class ReplayBuffer:
     def __len__(self):
         return len(self.buffer)
 
+def supportive_reward(base_packet, modified_packets):
+    reward = 0
+    for packet in modified_packets:
+        if packet[IP].dst == base_packet[IP].dst:
+            reward += 2
+        if packet[IP].src == base_packet[IP].src:
+            reward += 2
+        if packet[TCP].dport == base_packet[TCP].dport:
+            reward += 2
+        if packet[TCP].sport == base_packet[TCP].sport:
+            reward += 2
+    if modified_packets[0][TCP].flags.R == True:
+        reward += 5
+    if modified_packets[0][TCP].flags.R == False:
+        reward += 5
+    return reward
+ 
+
+
 def reset_environment(evaluator):
     base_packet = evaluator.get_base_packet()
     packets = [base_packet]*NUM_PACKETS
@@ -52,20 +72,23 @@ def reset_environment(evaluator):
     return base_packet, packets, response_packets
 
 
-def episilon_greedy_experience(actor_network, packets, base_packet, response_packets, eps, evaluator, mean=0, std_dev=100000):
+def episilon_greedy_experience(actor_network, packets, base_packet, response_packets, eps, evaluator, mean=0, std_dev=200):
     state_vector = encode_state(base_packet, packets, response_packets)
+    normalized_state_vector = state_vector / 2000000000
     r = random.random()
     if r < eps:
-        outputs = actor_network(state_vector)
+        outputs = actor_network(normalized_state_vector)*1000
         noise = torch.tensor(np.random.normal(mean, std_dev, size=outputs.shape))
         noisy_outputs = outputs + noise
+        noisy_outputs = outputs
     else:
-        noisy_outputs = torch.tensor(np.random.uniform(-30000, 10000, size=NUM_PACKETS*PACKET_SIZE)).float()
+        noisy_outputs = torch.tensor(np.random.uniform(-3000, 1000, size=NUM_PACKETS*PACKET_SIZE)).float()
     modified_packets = decode_output(base_packet, packets, noisy_outputs)
     reward, response_packets = evaluator.evaluate(modified_packets)
-    new_state_vector = encode_state(base_packet, modified_packets, response_packets)
+    reward += supportive_reward(base_packet, modified_packets)
+    new_state_vector = encode_state(base_packet, modified_packets, response_packets) / 2000000000
     done = False
-    return (state_vector, noisy_outputs, reward, new_state_vector, done), (modified_packets, response_packets)
+    return (normalized_state_vector, noisy_outputs, reward, new_state_vector, done), (modified_packets, response_packets)
 
 
 def train_network(actor, critic, replay_buffer, actor_optimizer, critic_optimizer, batch_size, gamma, l2_lambda=1):
@@ -81,9 +104,10 @@ def train_network(actor, critic, replay_buffer, actor_optimizer, critic_optimize
     
         # Compute target Q-values using critic
     with torch.no_grad():
-        next_states_critic = next_states
-        next_actions = actor(next_states_critic)
-        target_q_values = rewards + gamma * (1 - dones) * critic(next_states_critic, next_actions)
+        # next_states_critic = next_states
+        # next_actions = actor(next_states_critic)
+        # target_q_values = rewards + gamma * (1 - dones) * critic(next_states_critic, next_actions)
+        target_q_values = rewards
 
     # Update critic: Minimize MSE between predicted and target Q-values
     predicted_q_values = critic(states, actions.clone().detach())
@@ -98,6 +122,8 @@ def train_network(actor, critic, replay_buffer, actor_optimizer, critic_optimize
     actor_optimizer.zero_grad()
     actor_loss.backward()
     actor_optimizer.step()
+
+    # print(torch.sum([val for val in actor.parameters()][0]))
 
 
 
@@ -128,13 +154,13 @@ if __name__ == "__main__":
     evaluator = Evaluator(censor_index=0)
 
     # Example loop for training
-    eps = 0.9
+    eps = 1
     rewards = []
     max_reward = 0
-    for episode in range(1000):
+    for episode in range(10000):
         base_packet, packets, response_packets = reset_environment(evaluator)
         episode_reward = 0
-        for step in range(100):
+        for step in range(1):
             # Simulate an environment (replace with real environment logic)
             try:
                 experience, packet_info = episilon_greedy_experience(actor, packets, base_packet, response_packets, eps=eps, evaluator=evaluator)
@@ -142,7 +168,7 @@ if __name__ == "__main__":
                 continue
             state, action, reward, next_state, done = experience    
             if reward > max_reward:
-                print(reward)
+                print('new max,',reward)
                 done = True
                 max_reward = reward
                 replay_buffer.push(state=state, action=action, reward=reward, next_state=next_state,done=done)
@@ -151,9 +177,21 @@ if __name__ == "__main__":
             if step == 99:
                 done=True
             episode_reward += reward  
+            print(reward)
 
             replay_buffer.push(state=state, action=action, reward=reward, next_state=next_state,done=done)
-            
+            if reward > 100:
+                print('*'*73)
+                print("Current Reward", reward)
+                print('Base Packet')
+                packet_summary(base_packet)
+                print('Modified Packets')
+                for packet in packets:
+                    packet_summary(packet)
+                print('Response Packets')
+                for packet in response_packets:
+                    packet_summary(packet)
+                print('*'*73) 
             # Train the learning network
 
             if len(replay_buffer) > batch_size:
@@ -179,20 +217,20 @@ if __name__ == "__main__":
         #         packet_summary(packet)
         #     print('*'*73, flush=True)
         rewards.append([average_reward])
-        if len(rewards) % 10 == 0:
+        if len(rewards) % 1000 == 0:
             plt.plot(np.arange(0, len(rewards), 1), rewards)
             plt.show()
-            pd.DataFrame(rewards, columns=['reward']).to_csv('rewards.csv')
+            pd.DataFrame(rewards, columns=['reward']).to_csv('rewards3.csv')
         if len(rewards) % 1000 == 0:
-            pd.DataFrame(rewards, columns=['reward']).to_csv('rewards.csv')
+            pd.DataFrame(rewards, columns=['reward']).to_csv('rewards3.csv')
     
         
-            
+      
 
     
-    pd.DataFrame(rewards, columns=['reward']).to_csv('rewards.csv')
+    pd.DataFrame(rewards, columns=['reward']).to_csv('rewards3.csv')
 
-    for i in range(3):
+    for i in range(1):
         experience, packet_info = episilon_greedy_experience(actor, packets, base_packet, response_packets, eps=10, evaluator=evaluator)
         packets, response_packets = packet_info
     print('*'*73)

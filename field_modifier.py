@@ -14,7 +14,7 @@ fields = {
     6: 'chksum_tcp',    # TCP checksum
     7: 'rst_flag',      # RST flag (1 if set, 0 otherwise)
     8: 'fin_flag',      # FIN flag (1 if set, 0 otherwise)
-    9: 'send',          # NOT IMPLEMENTED will send if (+) won't send if (-)
+    9: 'syn_flag'       # SYN flag (1 if set, 0 ow)
 }
 
 def ip_to_int(ip_address):
@@ -48,7 +48,7 @@ def mod_dst_port(val, packet):
 
 def mod_sn(val, packet):
     if val >= 0:
-        packet[TCP].seq = int(val)%4294967295
+        packet[TCP].seq = int(val)%70000
     return packet
 
 def mod_chksum_ip(val, packet):
@@ -60,13 +60,18 @@ def mod_chksum_tcp(val, packet):
     return packet
 
 def mod_rst_flag(val, packet):
-    packet[TCP].flags.S = False
-    packet[TCP].flags.R = True if val > 0 else False
+    if val > 0:
+        packet[TCP].flags = 'R'
     return packet
 
 def mod_fin_flag(val, packet):
-    packet[TCP].flags.S = False
-    packet[TCP].flags.F = True if val > 0 else False
+    if val > 0:
+        packet[TCP].flags = 'F'
+    return packet
+
+def mod_syn_flag(val, packet):
+    if val > 0:
+        packet[TCP].flags = 'S'
     return packet
 
 field_functions = {
@@ -79,6 +84,7 @@ field_functions = {
     'chksum_tcp': mod_chksum_tcp,
     'rst_flag': mod_rst_flag,
     'fin_flag': mod_fin_flag,
+    'syn_flag': mod_syn_flag,
     'send': None
 }
 
