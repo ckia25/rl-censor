@@ -15,8 +15,8 @@ fields = {
     4: 'sn',            # Sequence number
     5: 'chksum_ip',     # IP checksum
     6: 'chksum_tcp',    # TCP checksum
-    7: 'rst_flag',      # RST flag (1 if set, 0 otherwise)
-    8: 'fin_flag',      # FIN flag (1 if set, 0 otherwise)
+    7: 'rst_flag',      # RST flag ((+) if set, (-) otherwise)
+    8: 'fin_flag',      # FIN flag ((+) if set, (-) otherwise)
     9: 'syn_flag',
     10: 'send',          # NOT IMPLEMENTED will send if (+) won't send if (-)
 }
