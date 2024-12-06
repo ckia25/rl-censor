@@ -14,7 +14,9 @@ fields = {
     6: 'chksum_tcp',    # TCP checksum
     7: 'rst_flag',      # RST flag (1 if set, 0 otherwise)
     8: 'fin_flag',      # FIN flag (1 if set, 0 otherwise)
-    9: 'syn_flag'       # SYN flag (1 if set, 0 ow)
+    9: 'syn_flag',       # SYN flag (1 if set, 0 ow)
+    10: 'duplicate',
+    11: 'frag_offs'
 }
 
 def ip_to_int(ip_address):
@@ -71,6 +73,15 @@ def mod_syn_flag(val, packet):
     packet[TCP].flags.S = True if val > 0 else False
     return packet
 
+# NEVER USED
+def mod_duplicate(val, packet):
+    return packet
+
+# NOT IMPLEMENTED
+def mod_frag_offs(val, packet):
+    return packet
+
+
 field_functions = {
     'src_ip': mod_src_ip,
     'dst_ip': mod_dst_port,
@@ -82,23 +93,31 @@ field_functions = {
     'rst_flag': mod_rst_flag,
     'fin_flag': mod_fin_flag,
     'syn_flag': mod_syn_flag,
+    'duplicate': mod_duplicate,
+    'frag_offs': mod_frag_offs,
     'send': None
 }
 
-def modify_packet_pipeline(vector, packet):
+def modify_packet_pipeline(vector, packet, at_capacity):
     packet = packet.copy()
+    
+    duplicate_packet = packet.copy()
     recompute_ip_chksm = False
     recompute_tcp_chksm = False
+    output_packets = [packet]
     for i, val in enumerate(vector):
         field = fields[i]
         if field == 'chksum_ip' and (val <= 0 or val is None):
             recompute_ip_chksm = True
         elif field == 'chksum_tcp' and (val <= 0 or val is None):
             recompute_tcp_chksm = True
+        elif field == 'duplicate' and not at_capacity and (val > 0 or val is None):
+            output_packets.append(duplicate_packet)
         else:
             packet = field_functions[field](val, packet)
     if recompute_ip_chksm:
         compute_ip_chksm(packet)
     if recompute_tcp_chksm:
         compute_tcp_chksm(packet)
-    return packet
+    output_packets[0] = packet
+    return output_packets

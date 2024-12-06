@@ -15,14 +15,15 @@ fields = {
     4: 'sn',            # Sequence number
     5: 'chksum_ip',     # IP checksum
     6: 'chksum_tcp',    # TCP checksum
-    7: 'rst_flag',      # RST flag ((+) if set, (-) otherwise)
-    8: 'fin_flag',      # FIN flag ((+) if set, (-) otherwise)
-    9: 'syn_flag',
-    10: 'send',          # NOT IMPLEMENTED will send if (+) won't send if (-)
+    7: 'rst_flag',      # RST flag (1 if set, 0 otherwise)
+    8: 'fin_flag',      # FIN flag (1 if set, 0 otherwise)
+    9: 'syn_flag',       # SYN flag (1 if set, 0 ow)
+    10: 'duplicate',
+    11: 'frag_offs'
 }
 
-PACKET_SIZE = 10
-NUM_PACKETS = 2
+PACKET_SIZE = 12
+NUM_PACKETS = 5
 
 def ip_to_int(ip_address):
     return struct.unpack("!I", socket.inet_aton(ip_address))[0]
@@ -37,6 +38,17 @@ def create_k_empty_response_packets(k):
     for i in range(k-1):
         packets.append(packet.copy())
     return packets
+
+def fill_packets(packets, n=NUM_PACKETS):
+    full_packets = []
+    for packet in packets:
+        full_packets.append(packet)
+    if len(packets) == n:
+        return full_packets
+    for packet in create_k_empty_response_packets(k=n-len(packets)):
+        full_packets.append(packet)
+    
+    return full_packets
 
 def encode_packet(packet):
     vector = [0] * PACKET_SIZE  # Update size to match expanded fields
@@ -66,7 +78,7 @@ def encode_packet(packet):
 def encode_state(base_packet, packets, response_packets):
     vectors = []
     vectors.append(encode_packet(base_packet))
-    for packet in packets:
+    for packet in fill_packets(packets):
         vectors.append(encode_packet(packet))
     for response_packet in response_packets[:NUM_PACKETS]:
         vectors.append(encode_packet(response_packet))
@@ -78,15 +90,19 @@ def encode_state(base_packet, packets, response_packets):
 
 def decode_output(base_packet, packets, outputs):  
     vectors = (outputs).reshape(NUM_PACKETS, PACKET_SIZE)
+    vectors = vectors[:len(packets)]
     modified_packets = []
+    num_new_packets = 0
     for vector, packet in zip(vectors, packets):
-        modified_packet = decode_vector(vector, packet, base_packet)
-        modified_packets.append(modified_packet)
+        at_capacity = num_new_packets + len(packets) >= NUM_PACKETS
+        for i, p in enumerate(decode_vector(vector, packet, base_packet, at_capacity)):
+            num_new_packets += 1 if i > 0 else 0
+            modified_packets.append(p)
     return modified_packets
 
 
-def decode_vector(vector, packet, base_packet):
-    return modify_packet_pipeline(vector, packet)
+def decode_vector(vector, packet, base_packet, at_capacity):
+    return modify_packet_pipeline(vector, packet, at_capacity)
 
 
 if __name__ == '__main__':
@@ -98,9 +114,9 @@ if __name__ == '__main__':
     print('Tested ENCODE PACKET RESULT:', vector)
     print()
 
-    outputs = np.array([156.345, 2324.346, 809.345, -54.34, 34.1, 2325.4, 523.4, -23, 92.3])
-    modified_packet = decode_vector(outputs, pkt, None)
+    outputs = np.array([156.345, 2324.346, 809.345, -54.34, 34.1, 2325.4, 523.4, -23, 92.3, 1, 1, 1])
+    modified_packets = decode_vector(outputs, pkt, None, False)
     print('*'*73)
     print()
-    print('Tested decode_vector: ',modified_packet)
+    print('Tested decode_vector: ',modified_packets)
     print()

@@ -38,19 +38,18 @@ class MockClient:
         return False
 
     def recieve_packets(self, packets, forbidden_word):
-        reward = -10
+        reward = -50
         for packet in packets:
             if not self.verify_destination(packet):
                 continue
-            if packet[TCP].flags.R == True:
-                reward += 5
-            else:
-                reward += 10
-            # print(packet.summary())
-            # print('payload: ',self.get_payload(packet))
-            # print('*'*73)
             if self.get_payload(packet) == forbidden_word:
-                reward += 200
+                reward += 2000
+
+            if packet[TCP].flags.R == True:
+                reward += 20
+            else:
+                reward += 50
+
         return reward
 
     def get_payload(self, packet):

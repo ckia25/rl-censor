@@ -4,3 +4,6 @@ Ideas:
 - The random episilon_greedy_experience approach may not help with the updating of the parameters
 - Add noise sometime not all the time
 - split ip address into four chunks
+
+
+- reset_environment needs to be changed
