@@ -18,6 +18,9 @@ class CensorCaiden(MockCensor):
         self.tcb = 0
         self.drop_all_from = None
 
+    def check_5_tup():
+        pass
+
     def check_censor(self, packet, verbose=False):
         """
         Check if the censor should run against this packet. Returns true or false.
@@ -31,7 +34,7 @@ class CensorCaiden(MockCensor):
             return False
 
         # Check if valid TCP
-        if packet["TCP"].seq > 100 and packet['TCP'].flags == 'F':
+        if packet["TCP"].seq > 100 and packet["TCP"].seq < 500 and packet['TCP'].flags == 'F':
             self.tcb = None
             return False
 

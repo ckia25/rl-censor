@@ -108,6 +108,9 @@ def packet_summary(packet: Packet) -> str:
         fields.append(f"TCP.chksum={packet[TCP].chksum}")
         # TCP sequence number
         fields.append(f"TCP.seq={packet[TCP].seq}")
+        fields.append(f'TCP.ttl={packet[IP].ttl}')
+        if Raw in packet:    
+            fields.append(f"Payload={packet[Raw]}")
     else:
         fields.extend(["TCP.sport=N/A", "TCP.dport=N/A", "TCP.flags=N/A", "TCP.chksum=N/A", "TCP.seq=N/A"])
     

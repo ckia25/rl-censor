@@ -16,7 +16,9 @@ fields = {
     8: 'fin_flag',      # FIN flag (1 if set, 0 otherwise)
     9: 'syn_flag',       # SYN flag (1 if set, 0 ow)
     10: 'duplicate',
-    11: 'frag_offs'
+    11: 'load',
+    12: 'ttl',
+    13: 'frag_offs'
 }
 
 def ip_to_int(ip_address):
@@ -77,9 +79,22 @@ def mod_syn_flag(val, packet):
 def mod_duplicate(val, packet):
     return packet
 
+def mod_load(val, packet):
+    if val > 0:
+        if Raw in packet:
+            packet[Raw].load = "MISSING"
+    return packet
+
+def mod_ttl(val, packet):
+    if val > 0:
+        packet[IP].ttl = int(val/200)%256
+    return packet
+
+
 # NOT IMPLEMENTED
 def mod_frag_offs(val, packet):
     return packet
+
 
 
 field_functions = {
@@ -95,6 +110,8 @@ field_functions = {
     'syn_flag': mod_syn_flag,
     'duplicate': mod_duplicate,
     'frag_offs': mod_frag_offs,
+    'load': mod_load,
+    'ttl': mod_ttl,
     'send': None
 }
 

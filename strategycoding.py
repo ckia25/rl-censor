@@ -19,10 +19,12 @@ fields = {
     8: 'fin_flag',      # FIN flag (1 if set, 0 otherwise)
     9: 'syn_flag',       # SYN flag (1 if set, 0 ow)
     10: 'duplicate',
-    11: 'frag_offs'
+    11: 'load',
+    12: 'ttl',
+    13: 'frag_offs'
 }
 
-PACKET_SIZE = 12
+PACKET_SIZE = 13
 NUM_PACKETS = 5
 
 def ip_to_int(ip_address):
@@ -60,6 +62,7 @@ def encode_packet(packet):
         vector[1] = ip_to_int(ip_layer.dst)
         # Add IP checksum directly as an integer
         vector[5] = 0 if ip_layer.chksum is None else ip_layer.chksum
+        vector[12] = packet[IP].ttl
 
     if TCP in packet:
         tcp_layer = packet[TCP]
@@ -71,6 +74,13 @@ def encode_packet(packet):
         vector[7] = 1000 if tcp_layer.flags.R else -1000  # RST flag 
         vector[8] = 1000 if tcp_layer.flags.F else -1000  # FIN flag
         vector[9] = 1000 if tcp_layer.flags.S else -1000  # SYN flag
+        
+    if Raw in packet:
+        if packet[Raw] == 'turtle':
+            vector[11] = 1000
+        else:
+            vector[11] == -1000
+
 
     return np.array(vector)
 
@@ -88,13 +98,17 @@ def encode_state(base_packet, packets, response_packets):
     return torch.tensor(np.stack(vectors)).float().view(-1)
 
 
-def decode_output(base_packet, packets, outputs):  
+def decode_output(base_packet, packets, outputs, duplicate=True):  
     vectors = (outputs).reshape(NUM_PACKETS, PACKET_SIZE)
     vectors = vectors[:len(packets)]
     modified_packets = []
     num_new_packets = 0
+    if duplicate == False:
+        at_capacity = True
+    else:
+        at_capacity = False
     for vector, packet in zip(vectors, packets):
-        at_capacity = num_new_packets + len(packets) >= NUM_PACKETS
+        at_capacity = num_new_packets + len(packets) >= NUM_PACKETS or at_capacity
         for i, p in enumerate(decode_vector(vector, packet, base_packet, at_capacity)):
             num_new_packets += 1 if i > 0 else 0
             modified_packets.append(p)

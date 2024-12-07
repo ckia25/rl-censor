@@ -7,3 +7,10 @@ Ideas:
 
 
 - reset_environment needs to be changed
+
+- store the sequence that lead to the reward in the priority buffer
+
+add: add ttl, 
+
+
+Train critic more than actor

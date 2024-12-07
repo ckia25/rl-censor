@@ -174,10 +174,10 @@ if __name__ == "__main__":
     # Replay buffer
     replay_buffer = ReplayBuffer(replay_buffer_capacity)
     # torch.autograd.set_detect_anomaly(True)
-    evaluator = Evaluator(censor_index=0)
+    evaluator = Evaluator(censor_index=1)
 
     # Example loop for training
-    eps = 0.8
+    eps = 1
     rewards = []
     max_reward = 0
     packet_count = 0
@@ -274,8 +274,8 @@ if __name__ == "__main__":
 
         rewards.append([average_reward])
         if len(rewards) % 1000 == 0:
-            plt.plot(np.arange(0, len(rewards), 1), rewards)
-            plt.show()
+            # plt.plot(np.arange(0, len(rewards), 1), rewards)
+            # plt.show()
             pd.DataFrame(rewards, columns=['reward']).to_csv('rewards4.csv')
         if len(rewards) % 1000 == 0:
             pd.DataFrame(rewards, columns=['reward']).to_csv('rewards4.csv')
