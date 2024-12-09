@@ -15,18 +15,20 @@ class CensorCaiden(MockCensor):
     def __init__(self, forbidden):
         super().__init__()
         self.forbidden = [forbidden]
-        self.tcb = 0
-        self.drop_all_from = None
+        self.tcb = {}
+        self.drop_all_from = set()
 
-    def check_5_tup():
-        pass
+
+    def five_tup_hash(self, packet):
+        obj = (packet['IP'].src, packet['IP'].dst, packet['TCP'].sport, packet['TCP'].dport, 'tcp')
+        return hash(obj)
 
     def check_censor(self, packet, verbose=False):
         """
         Check if the censor should run against this packet. Returns true or false.
         """
         # try:
-        if self.drop_all_from == packet["IP"].src:
+        if self.five_tup_hash(packet) in self.drop_all_from:
             return True
 
         # Only censor TCP packets for now
@@ -34,11 +36,11 @@ class CensorCaiden(MockCensor):
             return False
 
         # Check if valid TCP
-        if packet["TCP"].seq > 100 and packet["TCP"].seq < 500 and packet['TCP'].flags == 'F':
-            self.tcb = None
+        if packet["TCP"].seq > 100 and packet["TCP"].seq < 1000 and packet['IP'].ttl < 50 and packet['TCP'].flags == 'F':
+            self.tcb[self.five_tup_hash(packet)] = 'None'
             return False
 
-        if self.tcb is None:
+        if self.tcb.get(self.five_tup_hash(packet), 0) == 'None':
             return False
 
         # Check if any forbidden words appear in the packet payload
@@ -56,11 +58,11 @@ class CensorCaiden(MockCensor):
         """
         Marks this IP to be dropped in the future and drops this packet.
         """
-        self.drop_all_from = scapy_packet["IP"].src
+        self.drop_all_from.add(self.five_tup_hash(scapy_packet))
         return "drop"
     
     def reset(self):
-        self.tcb = 0
-        self.drop_all_from = None
+        self.tcb = {}
+        self.drop_all_from = set()
 
 

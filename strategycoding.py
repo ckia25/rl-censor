@@ -25,7 +25,7 @@ fields = {
 }
 
 PACKET_SIZE = 13
-NUM_PACKETS = 5
+NUM_PACKETS = 2
 
 def ip_to_int(ip_address):
     return struct.unpack("!I", socket.inet_aton(ip_address))[0]
@@ -52,7 +52,7 @@ def fill_packets(packets, n=NUM_PACKETS):
     
     return full_packets
 
-def encode_packet(packet):
+def encode_packet(packet, num_packets=0):
     vector = [0] * PACKET_SIZE  # Update size to match expanded fields
 
     if IP in packet:
@@ -63,6 +63,7 @@ def encode_packet(packet):
         # Add IP checksum directly as an integer
         vector[5] = 0 if ip_layer.chksum is None else ip_layer.chksum
         vector[12] = packet[IP].ttl
+        vector[10] = num_packets * 1000
 
     if TCP in packet:
         tcp_layer = packet[TCP]
@@ -89,7 +90,7 @@ def encode_state(base_packet, packets, response_packets):
     vectors = []
     vectors.append(encode_packet(base_packet))
     for packet in fill_packets(packets):
-        vectors.append(encode_packet(packet))
+        vectors.append(encode_packet(packet, len(packets)))
     for response_packet in response_packets[:NUM_PACKETS]:
         vectors.append(encode_packet(response_packet))
     for i in range(NUM_PACKETS - len(response_packets)):
@@ -98,8 +99,11 @@ def encode_state(base_packet, packets, response_packets):
     return torch.tensor(np.stack(vectors)).float().view(-1)
 
 
-def decode_output(base_packet, packets, outputs, duplicate=True):  
-    vectors = (outputs).reshape(NUM_PACKETS, PACKET_SIZE)
+def decode_output(base_packet, packets, outputs, mask_outputs, duplicate=True): 
+    for i, mo in enumerate(mask_outputs):
+        if mo < 0:
+            outputs[i] = -10 
+    vectors = (outputs).reshape(-1, PACKET_SIZE)
     vectors = vectors[:len(packets)]
     modified_packets = []
     num_new_packets = 0

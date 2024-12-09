@@ -5,6 +5,7 @@ class MockTCPServer:
         self.server_ip = server_ip
         self.server_port = server_port
         self.expected_seq = None  # To track expected sequence numbers
+        self.timewait = False
 
     def process_packets(self, packets):
         responses = []
@@ -76,6 +77,9 @@ class MockTCPServer:
         return [syn_ack_packet, echo_packet]
 
     def handle_data(self, packet):
+        if self.timewait == True:
+            self.timewait = False
+            return None
         if self.expected_seq and packet[TCP].seq == self.expected_seq:
             # Simulate data acknowledgment
             self.expected_seq += len(packet[Raw].load) if Raw in packet else 1
@@ -98,6 +102,7 @@ class MockTCPServer:
         fin_ack_packet = IP(src=self.server_ip, dst=packet[IP].src) / \
                          TCP(sport=self.server_port, dport=packet[TCP].sport,
                              seq=1000, ack=packet[TCP].seq + 1, flags="FA")
+        self.timewait=True
         return fin_ack_packet
 
     def send_reset(self, packet):

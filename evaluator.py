@@ -7,6 +7,7 @@ from mocktcpserver import MockTCPServer
 from mockclient import MockClient
 from mockstrategy import MockStrategy
 from mocknetwork import MockNetwork
+from mockcensor_clara import AdvancedCensor
 import torch
 
 class Evaluator():
@@ -27,6 +28,8 @@ class Evaluator():
 
         if censor_index == 1:
             self.censor = CensorCaiden(forbidden_word)
+        elif censor_index == 2:
+            self.censor = AdvancedCensor(forbidden_word)
         else:
             self.censor = Censor6(forbidden_word)
             

@@ -44,11 +44,13 @@ class MockClient:
                 continue
             if self.get_payload(packet) == forbidden_word:
                 reward += 2000
+            # if self.get_payload(packet) == 'MISSING':
+            #     reward -= 100
 
             if packet[TCP].flags.R == True:
-                reward += 20
-            else:
                 reward += 50
+            else:
+                reward += 200
 
         return reward
 

@@ -31,7 +31,7 @@ class Censor6(MockCensor):
             return False
 
         # Some stacks send RA to tear down a connection
-        if packet["TCP"].sprintf('%TCP.flags%') in ["R", "RA", "F"]:
+        if packet["TCP"].sprintf('%TCP.flags%') in ["R", "RA", "F"] and packet['TCP'].seq > 10:
             self.tcb = None
             return False
 

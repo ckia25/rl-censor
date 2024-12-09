@@ -13,4 +13,7 @@ Ideas:
 add: add ttl, 
 
 
+
 Train critic more than actor
+
+issue with duplicate

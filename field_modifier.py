@@ -27,7 +27,7 @@ def ip_to_int(ip_address):
 
 def int_to_ip(val):
     """Converts an integer back to an IP address."""
-    return socket.inet_ntoa(struct.pack("!I", int(val)%4294967295))
+    return socket.inet_ntoa(struct.pack("!I", (int(val)*10000)%4294967295))
 
 # Modifier functions
 def mod_src_ip(val, packet):
@@ -80,14 +80,14 @@ def mod_duplicate(val, packet):
     return packet
 
 def mod_load(val, packet):
-    if val > 0:
+    if val < 0:
         if Raw in packet:
             packet[Raw].load = "MISSING"
     return packet
 
 def mod_ttl(val, packet):
     if val > 0:
-        packet[IP].ttl = int(val/200)%256
+        packet[IP].ttl = int(val/20)%64
     return packet
 
 
@@ -129,7 +129,7 @@ def modify_packet_pipeline(vector, packet, at_capacity):
         elif field == 'chksum_tcp' and (val <= 0 or val is None):
             recompute_tcp_chksm = True
         elif field == 'duplicate' and not at_capacity and (val > 0 or val is None):
-            output_packets.append(duplicate_packet)
+            pass
         else:
             packet = field_functions[field](val, packet)
     if recompute_ip_chksm:
